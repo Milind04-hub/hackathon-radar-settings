@@ -32,7 +32,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
 button{font:inherit;border:0;border-radius:9px;padding:9px 16px;cursor:pointer;font-weight:600}
 .primary{background:var(--accent);color:var(--accent-ink)}
 .ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
-.bar{position:sticky;bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.bar{position:sticky;bottom:12px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
 .status{font-size:13px;color:var(--muted)}
 .status.ok{color:var(--ok)} .status.err{color:var(--warn)}
 .item{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
@@ -138,6 +138,7 @@ button{font:inherit;border:0;border-radius:9px;padding:9px 16px;cursor:pointer;f
     <span id="saveMsg" class="status">Changes apply from the next daily email.</span>
     <div style="display:flex;gap:8px">
       <button id="reset" class="ghost">Defaults</button>
+      <button id="sendNow" class="ghost" title="Saves your filters, then sends the digest right away">Send email now</button>
       <button id="save" class="primary">Save</button>
     </div>
   </div>
@@ -284,10 +285,33 @@ $("send").onclick = async () => {
 };
 $("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
 $("reset").onclick = () => { setForm(DEFAULTS); renderPreview(); $("saveMsg").textContent = "Defaults loaded. Save to apply."; $("saveMsg").className = "status"; };
-$("save").onclick = async () => {
+function say(text, kind=""){ $("saveMsg").textContent = text; $("saveMsg").className = "status " + kind; }
+
+async function save(){
   const {error} = await sb.from("settings").update({filters: readForm(), updated_at: new Date().toISOString()}).eq("id", 1);
-  $("saveMsg").textContent = error ? "Save failed: " + error.message : "Saved ✓ Applies from the next daily email.";
-  $("saveMsg").className = "status " + (error ? "err" : "ok");
+  if (error) say("Save failed: " + error.message, "err");
+  return !error;
+}
+
+$("save").onclick = async () => { if (await save()) say("Saved ✓ Applies from the next daily email.", "ok"); };
+
+$("sendNow").onclick = async () => {
+  const btn = $("sendNow");
+  btn.disabled = true;
+  try {
+    if (!(await save())) return;
+    say("Saved. Starting the send…");
+    const {error} = await sb.functions.invoke("send-now", {method: "POST"});
+    if (error){
+      let msg = error.message;
+      try { msg = (await error.context.json()).error || msg; } catch {}
+      say("Couldn't send: " + msg, "err");
+    } else {
+      say("On its way ✓ The email should arrive in 1–2 minutes.", "ok");
+    }
+  } finally {
+    setTimeout(() => { btn.disabled = false; }, 60000);   // avoid accidental double sends
+  }
 };
 document.querySelector("#app").addEventListener("input", renderPreview);
 
