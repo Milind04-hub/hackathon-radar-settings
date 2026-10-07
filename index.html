@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src https: data:; connect-src https://*.supabase.co wss://*.supabase.co; base-uri 'none'; form-action 'none'">
+<title>Hackathon Radar Settings</title>
+<style>
+:root{--bg:#f4f4f8;--card:#fff;--ink:#16161d;--muted:#6b6b7b;--line:#e4e4ee;--accent:#5b4bdb;--accent-ink:#fff;--ok:#1a7f4b;--warn:#b42318;--gold:#fff8e1;--gold-ink:#5c4700;--chip:#f1f0fb}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111117;--card:#1b1b24;--ink:#ececf3;--muted:#9a9aab;--line:#2c2c3a;--accent:#8b7dff;--accent-ink:#0e0e14;--ok:#4cc38a;--warn:#ff7a6e;--gold:#2b2510;--gold-ink:#f5d77a;--chip:#26233f}}
+:root[data-theme="dark"]{--bg:#111117;--card:#1b1b24;--ink:#ececf3;--muted:#9a9aab;--line:#2c2c3a;--accent:#8b7dff;--accent-ink:#0e0e14;--ok:#4cc38a;--warn:#ff7a6e;--gold:#2b2510;--gold-ink:#f5d77a;--chip:#26233f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 16px 64px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+h1{font-size:20px;margin:0}
+h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+label.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+label.row:first-of-type{border-top:0}
+.hint{color:var(--muted);font-size:12px}
+input[type=number],input[type=email],input[type=text],select{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;width:140px}
+input[type=text].wide{width:100%}
+input[type=range]{width:160px;accent-color:var(--accent)}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.checks label{display:flex;align-items:center;gap:6px;background:var(--chip);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer}
+button{font:inherit;border:0;border-radius:9px;padding:9px 16px;cursor:pointer;font-weight:600}
+.primary{background:var(--accent);color:var(--accent-ink)}
+.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.bar{position:sticky;bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.status{font-size:13px;color:var(--muted)}
+.status.ok{color:var(--ok)} .status.err{color:var(--warn)}
+.item{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item img{width:40px;height:40px;border-radius:8px;object-fit:cover;flex:none;background:var(--chip)}
+.item a{color:var(--ink);font-weight:600;text-decoration:none}
+.meta{font-size:12px;color:var(--muted)}
+.prize{display:inline-block;background:var(--gold);color:var(--gold-ink);font-weight:700;font-size:12px;border-radius:6px;padding:1px 7px;margin-right:6px}
+.new{display:inline-block;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.center{max-width:420px;margin:12vh auto 0}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section id="login" class="card center hidden">
+  <h1>📡 Hackathon Radar</h1>
+  <p class="hint">Sign in with the owner email. We'll send a one-time link; no password.</p>
+  <div style="display:flex;gap:8px;margin-top:12px">
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="email" style="flex:1;width:auto">
+    <button id="send" class="primary">Send link</button>
+  </div>
+  <p id="loginMsg" class="status" style="margin-top:10px"></p>
+</section>
+
+<section id="app" class="hidden">
+  <header>
+    <h1>📡 Hackathon Radar · Filters</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="who" class="hint"></span>
+      <button id="logout" class="ghost">Sign out</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Digest</h2>
+        <label class="row"><span>Pause emails<br><span class="hint">Nothing is sent while on</span></span><input id="paused" type="checkbox"></label>
+        <label class="row"><span>Hackathons per email</span><input id="max_items" type="number" min="1" max="30"></label>
+        <label class="row"><span>Sort by</span>
+          <select id="sort"><option value="prize">Biggest prize</option><option value="deadline">Closing soonest</option><option value="popular">Most registered</option></select></label>
+        <label class="row"><span>Show new ones first</span><input id="new_first" type="checkbox"></label>
+      </div>
+
+      <div class="card">
+        <h2>Format &amp; mix</h2>
+        <div class="checks" id="modes">
+          <label><input type="checkbox" value="online"> Online</label>
+          <label><input type="checkbox" value="offline"> In person</label>
+          <label><input type="checkbox" value="hybrid"> Hybrid</label>
+        </div>
+        <label class="row" style="margin-top:8px"><span>Online share <b id="shareOut"></b><br><span class="hint">Rest are in person / hybrid; topped up if one side runs short</span></span><input id="online_share" type="range" min="0" max="100" step="10"></label>
+        <label class="row"><span>Solo-friendly only</span><input id="solo_only" type="checkbox"></label>
+      </div>
+
+      <div class="card">
+        <h2>Prize</h2>
+        <label class="row"><span>Minimum prize pool (₹)<br><span class="hint">Dollars/euros are converted roughly</span></span><input id="min_prize_inr" type="number" min="0" step="1000"></label>
+        <label class="row"><span>Only hackathons with a stated prize</span><input id="prize_only" type="checkbox"></label>
+      </div>
+
+      <div class="card">
+        <h2>Timing</h2>
+        <label class="row"><span>At least this many days left to register</span><input id="min_days_left" type="number" min="0" max="365"></label>
+        <label class="row"><span>At most this many days left<br><span class="hint">Blank = no limit</span></span><input id="max_days_left" type="number" min="1" max="365"></label>
+      </div>
+
+      <div class="card">
+        <h2>Where &amp; what</h2>
+        <div class="checks" id="sources">
+          <label><input type="checkbox" value="devfolio"> Devfolio</label>
+          <label><input type="checkbox" value="devpost"> Devpost</label>
+          <label><input type="checkbox" value="unstop"> Unstop</label>
+        </div>
+        <p class="hint" style="margin:14px 0 4px">In-person cities / states (comma separated, blank = anywhere)</p>
+        <input id="locations" type="text" class="wide" placeholder="Delhi, Bengaluru, Maharashtra">
+        <p class="hint" style="margin:14px 0 4px">Must mention any of (title, tagline, themes)</p>
+        <input id="include_keywords" type="text" class="wide" placeholder="AI, web3, fintech">
+        <p class="hint" style="margin:14px 0 4px">Skip if it mentions any of</p>
+        <input id="exclude_keywords" type="text" class="wide" placeholder="CTF, quiz, ideathon">
+      </div>
+    </div>
+
+    <div class="card" style="position:sticky;top:16px">
+      <h2>Preview · <span id="count">…</span></h2>
+      <p class="hint" id="pool" style="margin-top:-6px"></p>
+      <div id="preview"></div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <span id="saveMsg" class="status">Changes apply from the next daily email.</span>
+    <div style="display:flex;gap:8px">
+      <button id="reset" class="ghost">Defaults</button>
+      <button id="save" class="primary">Save</button>
+    </div>
+  </div>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js"
+        integrity="sha384-WmjsOVSSw3JNqIKfmDU35+uddOzBdP9PlYIWCg7xdnVOesjWVGpRcooOVheFFwH4"
+        crossorigin="anonymous"></script>
+<script>
+// Public by design: the publishable key only grants what row-level security allows,
+// and the policies in schema.sql allow only the owner's signed-in account.
+const SUPABASE_URL = "https://kciukkatgnfknlolwrdn.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Wgj4diqANDRO-N-yZ3ez4A_wQhOoffv";
+
+// Mirrors filters.py DEFAULTS / keep / pick. Keep in step.
+const DEFAULTS = {paused:false,max_items:10,min_days_left:7,max_days_left:null,modes:["online","offline","hybrid"],
+  online_share:50,sources:["devfolio","devpost","unstop"],min_prize_inr:0,prize_only:false,solo_only:false,
+  locations:[],include_keywords:[],exclude_keywords:[],sort:"prize",new_first:true};
+const LISTS = ["locations","include_keywords","exclude_keywords"];
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const $ = id => document.getElementById(id);
+let listings = [];
+
+function show(view){ $("login").classList.toggle("hidden", view!=="login"); $("app").classList.toggle("hidden", view!=="app"); }
+
+function setForm(f){
+  for (const k of ["paused","solo_only","prize_only","new_first"]) $(k).checked = !!f[k];
+  for (const k of ["max_items","min_days_left","min_prize_inr","online_share","sort"]) $(k).value = f[k];
+  $("max_days_left").value = f.max_days_left ?? "";
+  for (const k of LISTS) $(k).value = (f[k]||[]).join(", ");
+  for (const box of ["modes","sources"]) for (const c of $(box).querySelectorAll("input")) c.checked = f[box].includes(c.value);
+  $("shareOut").textContent = f.online_share + "%";
+}
+
+function readForm(){
+  const num = (id, d) => { const v = parseInt($(id).value, 10); return Number.isFinite(v) ? v : d; };
+  const f = {
+    paused:$("paused").checked, solo_only:$("solo_only").checked, prize_only:$("prize_only").checked, new_first:$("new_first").checked,
+    max_items:Math.min(30, Math.max(1, num("max_items", 10))), min_days_left:Math.max(0, num("min_days_left", 7)),
+    max_days_left:num("max_days_left", 0) > 0 ? num("max_days_left", 0) : null,
+    min_prize_inr:Math.max(0, num("min_prize_inr", 0)), online_share:num("online_share", 50), sort:$("sort").value,
+  };
+  for (const k of LISTS) f[k] = $(k).value.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
+  for (const box of ["modes","sources"]) f[box] = [...$(box).querySelectorAll("input:checked")].map(c=>c.value);
+  return f;
+}
+
+function keep(l, f, today){
+  if (!l.title || !l.url || !f.sources.includes(l.source)) return false;
+  const mode = l.mode || "offline";
+  if (!f.modes.includes(mode)) return false;
+  if (l.reg_deadline){
+    const days = Math.round((new Date(l.reg_deadline.slice(0,10)) - today) / 864e5);
+    if (days < f.min_days_left || (f.max_days_left && days > f.max_days_left)) return false;
+  }
+  const prize = l.prize_value || 0;
+  if ((f.prize_only && !prize) || prize < f.min_prize_inr) return false;
+  if (f.solo_only && ![null, undefined, 1].includes(l.team_min)) return false;
+  if (f.locations.length && mode !== "online"){
+    const place = `${l.city||""} ${l.state||""}`.toLowerCase();
+    if (!f.locations.some(x => place.includes(x))) return false;
+  }
+  const text = [l.title, l.tagline||"", ...(l.themes||[])].join(" ").toLowerCase();
+  if (f.include_keywords.length && !f.include_keywords.some(k => text.includes(k))) return false;
+  if (f.exclude_keywords.some(k => text.includes(k))) return false;
+  return true;
+}
+
+function pick(rows, f){
+  const t = new Date(); const today = new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()));
+  const by = l => f.sort==="prize" ? -(l.prize_value||0) : f.sort==="popular" ? -(l.participants||0) : (l.reg_deadline||"9999");
+  const cmp = (a,b) => {
+    if (f.new_first && (a.status!=="new") !== (b.status!=="new")) return a.status==="new" ? -1 : 1;
+    const x = by(a), y = by(b); if (x !== y) return x < y ? -1 : 1;
+    return (a.reg_deadline||"9999") < (b.reg_deadline||"9999") ? -1 : 1;
+  };
+  const kept = rows.filter(l => keep(l, f, today)).sort(cmp);
+  const online = kept.filter(l => l.mode==="online"), other = kept.filter(l => l.mode!=="online");
+  const want = Math.round(f.max_items * f.online_share / 100);
+  let out = online.slice(0, want).concat(other.slice(0, f.max_items - want));
+  if (out.length < f.max_items) out = out.concat(online.slice(want).concat(other.slice(f.max_items - want)).slice(0, f.max_items - out.length));
+  return {kept: kept.length, items: out.sort((a,b) => kept.indexOf(a) - kept.indexOf(b))};
+}
+
+function el(tag, attrs={}, ...kids){
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+
+function renderPreview(){
+  const f = readForm();
+  $("shareOut").textContent = f.online_share + "%";
+  const {kept, items} = pick(listings, f);
+  $("count").textContent = `${items.length} would be sent`;
+  $("pool").textContent = `${kept} of ${listings.length} stored listings pass these filters`;
+  const box = $("preview"); box.replaceChildren();
+  if (!items.length) box.append(el("p", {class:"hint"}, "Nothing matches. Loosen a filter."));
+  for (const l of items){
+    const img = l.logo && /^https:\/\//.test(l.logo) ? el("img", {src:l.logo, alt:"", loading:"lazy", referrerpolicy:"no-referrer"}) : el("img", {alt:""});
+    const link = el("a", {href:/^https?:\/\//.test(l.url) ? l.url : "#", target:"_blank", rel:"noopener noreferrer"}, l.title);
+    const meta = [l.mode, [l.city, l.state].filter(Boolean).join(", "), l.reg_deadline && `reg by ${l.reg_deadline}`, l.source].filter(Boolean).join(" · ");
+    box.append(el("div", {class:"item"}, img, el("div", {},
+      link, l.status==="new" ? el("span", {class:"new"}, "NEW") : null,
+      el("div", {class:"meta"}, l.prize ? el("span", {class:"prize"}, "🏆 " + l.prize) : null, meta))));
+  }
+}
+
+async function loadApp(session){
+  show("app");
+  $("who").textContent = session.user.email;
+  const [s, l] = await Promise.all([
+    sb.from("settings").select("filters").eq("id", 1).maybeSingle(),
+    sb.from("listings").select("title,url,source,mode,city,state,reg_deadline,prize,prize_value,team_min,tagline,themes,participants,status,logo"),
+  ]);
+  if (s.error || l.error || !s.data){
+    $("saveMsg").textContent = "This account can't read the settings. Sign in with the owner email.";
+    $("saveMsg").className = "status err"; $("save").disabled = true;
+  }
+  setForm({...DEFAULTS, ...(s.data?.filters || {})});
+  listings = l.data || [];
+  renderPreview();
+}
+
+$("send").onclick = async () => {
+  const email = $("email").value.trim();
+  if (!email) return;
+  $("send").disabled = true;
+  const {error} = await sb.auth.signInWithOtp({email, options:{shouldCreateUser:false, emailRedirectTo:location.origin + location.pathname}});
+  $("loginMsg").textContent = error ? "Couldn't send a link. Check the address." : "Check your inbox for the sign-in link.";
+  $("loginMsg").className = "status " + (error ? "err" : "ok");
+  $("send").disabled = false;
+};
+$("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$("reset").onclick = () => { setForm(DEFAULTS); renderPreview(); $("saveMsg").textContent = "Defaults loaded. Save to apply."; $("saveMsg").className = "status"; };
+$("save").onclick = async () => {
+  const {error} = await sb.from("settings").update({filters: readForm(), updated_at: new Date().toISOString()}).eq("id", 1);
+  $("saveMsg").textContent = error ? "Save failed: " + error.message : "Saved ✓ Applies from the next daily email.";
+  $("saveMsg").className = "status " + (error ? "err" : "ok");
+};
+document.querySelector("#app").addEventListener("input", renderPreview);
+
+sb.auth.onAuthStateChange((_e, session) => { if (session && $("app").classList.contains("hidden")) loadApp(session); });
+sb.auth.getSession().then(({data}) => data.session ? loadApp(data.session) : show("login"));
+</script>
+</body>
+</html>
