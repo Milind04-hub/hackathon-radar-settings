@@ -213,7 +213,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <div class="brand">
       <div class="radar" aria-hidden="true"><i></i><i></i><i></i></div>
       <div>
-        <span class="live">Live · daily at 08:00 IST</span>
+        <span class="live" id="liveTag">Live · daily at 08:00 IST</span>
         <h1>Hackathon <span>Radar</span></h1>
         <p>Tune what lands in your inbox.</p>
       </div>
@@ -229,6 +229,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
       <div class="panel">
         <div class="panel-h"><span class="n">01</span><h2>Digest</h2></div>
         <label class="row"><span><span class="label">Pause emails</span><span class="hint">Nothing is sent while this is on</span></span><input id="paused" type="checkbox" class="switch"></label>
+        <label class="row"><span><span class="label">Daily send time</span><span class="hint">Indian Standard Time. May arrive up to ~30 min late when GitHub is busy.</span></span>
+          <select id="send_hour"></select></label>
         <label class="row"><span><span class="label">Hackathons per email</span><span class="hint">1 – 30</span></span><input id="max_items" type="number" min="1" max="30"></label>
         <label class="row"><span><span class="label">Sort by</span></span>
           <select id="sort"><option value="prize">Biggest prize</option><option value="deadline">Closing soonest</option><option value="popular">Most registered</option></select></label>
@@ -319,7 +321,7 @@ const SUPABASE_URL = "https://kciukkatgnfknlolwrdn.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Wgj4diqANDRO-N-yZ3ez4A_wQhOoffv";
 
 // Mirrors filters.py DEFAULTS / keep / pick. Keep in step.
-const DEFAULTS = {paused:false,max_items:10,min_days_left:7,max_days_left:null,modes:["online","offline","hybrid"],
+const DEFAULTS = {paused:false,send_hour:8,max_items:10,min_days_left:7,max_days_left:null,modes:["online","offline","hybrid"],
   online_share:50,sources:["devfolio","devpost","unstop"],min_prize_inr:0,prize_only:false,solo_only:false,
   regions:["india"],long_lead_days:60,locations:[],include_keywords:[],exclude_keywords:[],sort:"prize",new_first:true};
 const LISTS = ["locations","include_keywords","exclude_keywords"];
@@ -332,7 +334,7 @@ function show(view){ $("login").classList.toggle("hidden", view!=="login"); $("a
 
 function setForm(f){
   for (const k of ["paused","solo_only","prize_only","new_first"]) $(k).checked = !!f[k];
-  for (const k of ["max_items","min_days_left","min_prize_inr","online_share","sort","long_lead_days"]) $(k).value = f[k];
+  for (const k of ["max_items","min_days_left","min_prize_inr","online_share","sort","long_lead_days","send_hour"]) $(k).value = f[k];
   $("max_days_left").value = f.max_days_left ?? "";
   for (const k of LISTS) $(k).value = (f[k]||[]).join(", ");
   for (const box of ["modes","sources","regions"]) for (const c of $(box).querySelectorAll("input")) c.checked = f[box].includes(c.value);
@@ -343,6 +345,7 @@ function readForm(){
   const num = (id, d) => { const v = parseInt($(id).value, 10); return Number.isFinite(v) ? v : d; };
   const f = {
     paused:$("paused").checked, solo_only:$("solo_only").checked, prize_only:$("prize_only").checked, new_first:$("new_first").checked,
+    send_hour:Math.min(23, Math.max(0, num("send_hour", 8))),
     max_items:Math.min(30, Math.max(1, num("max_items", 10))), min_days_left:Math.max(0, num("min_days_left", 7)),
     max_days_left:num("max_days_left", 0) > 0 ? num("max_days_left", 0) : null,
     min_prize_inr:Math.max(0, num("min_prize_inr", 0)), long_lead_days:Math.min(365, Math.max(0, num("long_lead_days", 60))), online_share:num("online_share", 50), sort:$("sort").value,
@@ -416,8 +419,12 @@ function el(tag, attrs={}, ...kids){
   return e;
 }
 
+const hourLabel = h => `${String(h).padStart(2,"0")}:00 · ${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`;
+$("send_hour").replaceChildren(...Array.from({length:24}, (_, h) => el("option", {value:String(h)}, hourLabel(h))));
+
 function renderPreview(){
   const f = readForm();
+  $("liveTag").textContent = `Live · daily at ${String(f.send_hour).padStart(2,"0")}:00 IST`;
   $("shareOut").textContent = f.online_share + "%";
   $("online_share").style.setProperty("--p", f.online_share + "%");
   const {kept, items} = pick(listings, f);
