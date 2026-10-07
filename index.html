@@ -103,6 +103,15 @@ button{font:inherit;border:0;border-radius:9px;padding:9px 16px;cursor:pointer;f
       </div>
 
       <div class="card">
+        <h2>In-person events</h2>
+        <p class="hint" style="margin:-4px 0 10px">Where you can travel to. Online events are never affected.</p>
+        <div class="checks" id="regions">
+          <label><input type="checkbox" value="india"> 🇮🇳 India</label>
+          <label><input type="checkbox" value="abroad"> 🌍 Abroad</label>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>Where &amp; what</h2>
         <div class="checks" id="sources">
           <label><input type="checkbox" value="devfolio"> Devfolio</label>
@@ -147,7 +156,7 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Wgj4diqANDRO-N-yZ3ez4A_wQhOoffv
 // Mirrors filters.py DEFAULTS / keep / pick. Keep in step.
 const DEFAULTS = {paused:false,max_items:10,min_days_left:7,max_days_left:null,modes:["online","offline","hybrid"],
   online_share:50,sources:["devfolio","devpost","unstop"],min_prize_inr:0,prize_only:false,solo_only:false,
-  locations:[],include_keywords:[],exclude_keywords:[],sort:"prize",new_first:true};
+  regions:["india"],locations:[],include_keywords:[],exclude_keywords:[],sort:"prize",new_first:true};
 const LISTS = ["locations","include_keywords","exclude_keywords"];
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -161,7 +170,7 @@ function setForm(f){
   for (const k of ["max_items","min_days_left","min_prize_inr","online_share","sort"]) $(k).value = f[k];
   $("max_days_left").value = f.max_days_left ?? "";
   for (const k of LISTS) $(k).value = (f[k]||[]).join(", ");
-  for (const box of ["modes","sources"]) for (const c of $(box).querySelectorAll("input")) c.checked = f[box].includes(c.value);
+  for (const box of ["modes","sources","regions"]) for (const c of $(box).querySelectorAll("input")) c.checked = f[box].includes(c.value);
   $("shareOut").textContent = f.online_share + "%";
 }
 
@@ -174,8 +183,15 @@ function readForm(){
     min_prize_inr:Math.max(0, num("min_prize_inr", 0)), online_share:num("online_share", 50), sort:$("sort").value,
   };
   for (const k of LISTS) f[k] = $(k).value.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
-  for (const box of ["modes","sources"]) f[box] = [...$(box).querySelectorAll("input:checked")].map(c=>c.value);
+  for (const box of ["modes","sources","regions"]) f[box] = [...$(box).querySelectorAll("input:checked")].map(c=>c.value);
   return f;
+}
+
+// Same rule as filters.region(): Devfolio/Unstop default to India, an unplaced Devpost venue is abroad.
+function region(l){
+  const c = (l.country || "").toLowerCase();
+  if (c) return c === "india" ? "india" : "abroad";
+  return ["devfolio","unstop"].includes(l.source) ? "india" : "abroad";
 }
 
 function keep(l, f, today){
@@ -189,6 +205,7 @@ function keep(l, f, today){
   const prize = l.prize_value || 0;
   if ((f.prize_only && !prize) || prize < f.min_prize_inr) return false;
   if (f.solo_only && ![null, undefined, 1].includes(l.team_min)) return false;
+  if (mode !== "online" && !f.regions.includes(region(l))) return false;
   if (f.locations.length && mode !== "online"){
     const place = `${l.city||""} ${l.state||""}`.toLowerCase();
     if (!f.locations.some(x => place.includes(x))) return false;
@@ -233,7 +250,7 @@ function renderPreview(){
   for (const l of items){
     const img = l.logo && /^https:\/\//.test(l.logo) ? el("img", {src:l.logo, alt:"", loading:"lazy", referrerpolicy:"no-referrer"}) : el("img", {alt:""});
     const link = el("a", {href:/^https?:\/\//.test(l.url) ? l.url : "#", target:"_blank", rel:"noopener noreferrer"}, l.title);
-    const meta = [l.mode, [l.city, l.state].filter(Boolean).join(", "), l.reg_deadline && `reg by ${l.reg_deadline}`, l.source].filter(Boolean).join(" · ");
+    const meta = [l.mode, [l.city, l.state].filter(Boolean).join(", "), l.country, l.reg_deadline && `reg by ${l.reg_deadline}`, l.source].filter(Boolean).join(" · ");
     box.append(el("div", {class:"item"}, img, el("div", {},
       link, l.status==="new" ? el("span", {class:"new"}, "NEW") : null,
       el("div", {class:"meta"}, l.prize ? el("span", {class:"prize"}, "🏆 " + l.prize) : null, meta))));
@@ -245,14 +262,14 @@ async function loadApp(session){
   $("who").textContent = session.user.email;
   const [s, l] = await Promise.all([
     sb.from("settings").select("filters").eq("id", 1).maybeSingle(),
-    sb.from("listings").select("title,url,source,mode,city,state,reg_deadline,prize,prize_value,team_min,tagline,themes,participants,status,logo"),
+    sb.from("listings").select("title,url,source,mode,city,state,country,reg_deadline,prize,prize_value,team_min,tagline,themes,participants,status,logo"),
   ]);
   if (s.error || l.error || !s.data){
     $("saveMsg").textContent = "This account can't read the settings. Sign in with the owner email.";
     $("saveMsg").className = "status err"; $("save").disabled = true;
   }
-  setForm({...DEFAULTS, ...(s.data?.filters || {})});
   listings = l.data || [];
+  setForm({...DEFAULTS, ...(s.data?.filters || {})});
   renderPreview();
 }
 
