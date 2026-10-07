@@ -100,6 +100,7 @@ button{font:inherit;border:0;border-radius:9px;padding:9px 16px;cursor:pointer;f
         <h2>Timing</h2>
         <label class="row"><span>At least this many days left to register</span><input id="min_days_left" type="number" min="0" max="365"></label>
         <label class="row"><span>At most this many days left<br><span class="hint">Blank = no limit</span></span><input id="max_days_left" type="number" min="1" max="365"></label>
+        <label class="row"><span>Always include one closing at least this many days out<br><span class="hint">Something to plan ahead for. 0 = off</span></span><input id="long_lead_days" type="number" min="0" max="365"></label>
       </div>
 
       <div class="card">
@@ -157,7 +158,7 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Wgj4diqANDRO-N-yZ3ez4A_wQhOoffv
 // Mirrors filters.py DEFAULTS / keep / pick. Keep in step.
 const DEFAULTS = {paused:false,max_items:10,min_days_left:7,max_days_left:null,modes:["online","offline","hybrid"],
   online_share:50,sources:["devfolio","devpost","unstop"],min_prize_inr:0,prize_only:false,solo_only:false,
-  regions:["india"],locations:[],include_keywords:[],exclude_keywords:[],sort:"prize",new_first:true};
+  regions:["india"],long_lead_days:60,locations:[],include_keywords:[],exclude_keywords:[],sort:"prize",new_first:true};
 const LISTS = ["locations","include_keywords","exclude_keywords"];
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -168,7 +169,7 @@ function show(view){ $("login").classList.toggle("hidden", view!=="login"); $("a
 
 function setForm(f){
   for (const k of ["paused","solo_only","prize_only","new_first"]) $(k).checked = !!f[k];
-  for (const k of ["max_items","min_days_left","min_prize_inr","online_share","sort"]) $(k).value = f[k];
+  for (const k of ["max_items","min_days_left","min_prize_inr","online_share","sort","long_lead_days"]) $(k).value = f[k];
   $("max_days_left").value = f.max_days_left ?? "";
   for (const k of LISTS) $(k).value = (f[k]||[]).join(", ");
   for (const box of ["modes","sources","regions"]) for (const c of $(box).querySelectorAll("input")) c.checked = f[box].includes(c.value);
@@ -181,7 +182,7 @@ function readForm(){
     paused:$("paused").checked, solo_only:$("solo_only").checked, prize_only:$("prize_only").checked, new_first:$("new_first").checked,
     max_items:Math.min(30, Math.max(1, num("max_items", 10))), min_days_left:Math.max(0, num("min_days_left", 7)),
     max_days_left:num("max_days_left", 0) > 0 ? num("max_days_left", 0) : null,
-    min_prize_inr:Math.max(0, num("min_prize_inr", 0)), online_share:num("online_share", 50), sort:$("sort").value,
+    min_prize_inr:Math.max(0, num("min_prize_inr", 0)), long_lead_days:Math.min(365, Math.max(0, num("long_lead_days", 60))), online_share:num("online_share", 50), sort:$("sort").value,
   };
   for (const k of LISTS) f[k] = $(k).value.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
   for (const box of ["modes","sources","regions"]) f[box] = [...$(box).querySelectorAll("input:checked")].map(c=>c.value);
@@ -230,7 +231,19 @@ function pick(rows, f){
   const want = Math.round(f.max_items * f.online_share / 100);
   let out = online.slice(0, want).concat(other.slice(0, f.max_items - want));
   if (out.length < f.max_items) out = out.concat(online.slice(want).concat(other.slice(f.max_items - want)).slice(0, f.max_items - out.length));
-  return {kept: kept.length, items: out.sort((a,b) => kept.indexOf(a) - kept.indexOf(b))};
+  out.sort((a,b) => kept.indexOf(a) - kept.indexOf(b));
+  // Mirrors filters.ensure_long_lead
+  const daysLeft = l => l.reg_deadline ? Math.round((new Date(l.reg_deadline.slice(0,10)) - today) / 864e5) : -1;
+  const far = l => daysLeft(l) >= f.long_lead_days;
+  if (f.long_lead_days && out.length && !out.some(far)){
+    const best = kept.find(l => far(l) && !out.includes(l));
+    if (best){
+      const same = out.filter(l => (l.mode==="online") === (best.mode==="online"));
+      const drop = (same.length ? same : out).at(-1);
+      out = out.filter(l => l !== drop).concat(best).sort((a,b) => kept.indexOf(a) - kept.indexOf(b));
+    }
+  }
+  return {kept: kept.length, items: out};
 }
 
 function el(tag, attrs={}, ...kids){
